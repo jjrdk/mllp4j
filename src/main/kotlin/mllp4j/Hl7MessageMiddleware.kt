@@ -9,7 +9,7 @@ interface Hl7MessageMiddleware {
     fun handle(message: Hl7Message): CompletableFuture<Message>
 }
 
-public class DefaultHl7Middleware(vararg handlers: IHandleIheTransactions) : Hl7MessageMiddleware {
+public class DefaultHl7Middleware(vararg handlers: HandleIheTransactions) : Hl7MessageMiddleware {
     private val transactionHandlers = handlers.toList().stream().collect(
         Collectors.toMap(
             { t -> t.version + t.handles },

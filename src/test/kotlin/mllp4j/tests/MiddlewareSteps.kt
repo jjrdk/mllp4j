@@ -6,7 +6,7 @@ import ca.uhn.hl7v2.model.v251.message.ADT_A01
 import io.cucumber.java8.En
 import mllp4j.DefaultHl7Middleware
 import mllp4j.Hl7Message
-import mllp4j.IHandleIheTransactions
+import mllp4j.HandleIheTransactions
 import java.util.concurrent.CompletableFuture
 import kotlin.test.assertNotNull
 
@@ -35,7 +35,7 @@ class MiddlewareSteps : En {
     }
 }
 
-class TestMessageHandler : IHandleIheTransactions {
+class TestMessageHandler : HandleIheTransactions {
     override val handles: String
         get() = "ADT_A01"
 

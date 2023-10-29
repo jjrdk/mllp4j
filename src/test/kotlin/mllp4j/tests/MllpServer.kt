@@ -1,7 +1,6 @@
-package mllp4j.tests;
+package mllp4j.tests
 
 import ca.uhn.hl7v2.model.v251.message.ADT_A01
-import ca.uhn.hl7v2.parser.EncodingCharacters
 import io.cucumber.java8.En
 import mllp4j.*
 import java.util.concurrent.CompletableFuture

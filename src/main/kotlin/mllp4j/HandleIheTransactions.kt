@@ -6,7 +6,7 @@ import java.util.concurrent.CompletableFuture
 /**
  * Defines the interface for handling IHE transactions.
  */
-public interface IHandleIheTransactions
+public interface HandleIheTransactions
 {
     /**
      * Gets the name of the message structure that is handled.

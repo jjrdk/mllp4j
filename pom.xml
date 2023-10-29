@@ -3,17 +3,18 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
-    <groupId>org.csi</groupId>
+    <groupId>dk.reimers</groupId>
     <artifactId>mllp4j</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>0.1</version>
 
     <properties>
+        <maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <kotlin.version>1.9.10</kotlin.version>
         <cucumber.version>7.11.1</cucumber.version>
+        <timestamp>${maven.build.timestamp}</timestamp>
     </properties>
 
     <dependencies>
@@ -24,7 +25,7 @@
         </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-test</artifactId>
+            <artifactId>kotlin-test-junit</artifactId>
             <version>${kotlin.version}</version>
             <scope>test</scope>
         </dependency>

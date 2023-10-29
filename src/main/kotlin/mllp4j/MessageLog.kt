@@ -4,11 +4,11 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
 
 interface MessageLog {
-    fun write(message: String): Future<Unit>
+    fun write(message: String): CompletableFuture<Unit>
 }
 
 class NullLog private constructor() : MessageLog {
-    override fun write(message: String): Future<Unit> {
+    override fun write(message: String): CompletableFuture<Unit> {
         return CompletableFuture.completedFuture(Unit)
     }
 

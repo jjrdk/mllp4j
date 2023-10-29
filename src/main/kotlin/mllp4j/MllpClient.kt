@@ -11,8 +11,7 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocket
 
 class MllpClient(host: String?, port: Int, sslContext: SSLContext?, clientCert: X509Certificate?) : AutoCloseable {
-    // A socket to communicate with the server
-    private var clientSocket: Socket? = null
+    private var clientSocket: Socket
     private val parser = DefaultHapiContext().pipeParser
     private val listener: Thread
     private val awaitingResponse = HashMap<String, CompletableFuture<Hl7Message>>()
@@ -21,49 +20,51 @@ class MllpClient(host: String?, port: Int, sslContext: SSLContext?, clientCert: 
     init {
         // If the ssl context is not null, create a secure socket with the given ssl context
         if (sslContext != null) {
-            clientSocket = sslContext.socketFactory.createSocket(host, port)
+            val socket =
+                sslContext.socketFactory.createSocket(host, port) ?: throw IOException("Could not create socket")
+            clientSocket = socket
             // If the client certificate is not null, set it as the socket's local certificate
             val sslSocket = (clientSocket as SSLSocket?)!!
             if (clientCert != null) {
+                val p = sslSocket.sslParameters
+                p.protocols = arrayOf("TLSv1.2", "TLSv1.3")
+                p.needClientAuth = true
+                p.cipherSuites = arrayOf("TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256", "TLS_AES_128_GCM_SHA256")
                 sslSocket.useClientMode = true
-                sslSocket.enabledProtocols = arrayOf("TLSv1.2")
-                sslSocket.needClientAuth = true
-                //sslSocket.setSSLParameters(SSLParameters(arrayOf(clientCert)))
+                sslSocket.enableSessionCreation = true
+                sslSocket.setSSLParameters(p)
             }
-            // Start the SSL handshake and validate the server's certificate
             sslSocket.startHandshake()
         } else {
-            // Otherwise, create a plain socket with the given host name and port number
             clientSocket = Socket(host, port)
         }
 
-        // Create a background thread to listen for responses from the server
         listener = Thread {
             try {
-                // Create an input stream to read data from the server socket
-                val reader = clientSocket!!.getInputStream().bufferedReader()
+                val reader = clientSocket.getInputStream().bufferedReader()
 
-                // Read data from the input stream until the end of stream or an exception occurs
-                val buffer = CharArray(256)
                 while (true) {
+                    val buffer = CharArray(256)
                     val read = reader.read(buffer)
                     if (read <= 0) {
                         Thread.sleep(1000)
                         continue
                     }
-                    val startIndex = buffer.indexOf(Constants.startBlock)
-                    val endStartIndex = buffer.indexOf(Constants.endBlock[0])
-                    val msgBuffer = buffer.sliceArray(IntRange(startIndex + 1, endStartIndex - 1))
-                    val hl7 = String(msgBuffer)
-                    val msg = parser.parse(hl7)
-                    val terser = Terser(msg)
-                    val msgControlId = terser.get("/.MSH-10-1")
-                    val receivedMessage = Hl7Message(msg, clientSocket!!.remoteSocketAddress.toString())
-                    val task = awaitingResponse[msgControlId]
-                    task?.complete(receivedMessage)
+                    val startIndex = buffer.indexOf(Constants.startCharacter)
+                    val endStartIndex = buffer.indexOf(Constants.firstEndChar)
+                    if (buffer.size >= endStartIndex + 2 && buffer[endStartIndex + 1] == Constants.lastEndChar) {
+                        val msgBuffer = buffer.sliceArray(IntRange(startIndex + 1, endStartIndex - 1))
+                        val hl7 = String(msgBuffer)
+                        val msg = parser.parse(hl7)
+                        val terser = Terser(msg)
+                        val msgControlId = terser.get("/.MSH-10-1")
+                        val receivedMessage = Hl7Message(msg, clientSocket.remoteSocketAddress.toString())
+                        val task = awaitingResponse[msgControlId]
+                        task?.complete(receivedMessage)
+                    }
                 }
             } catch (e: IOException) {
-                clientSocket?.close()
+                clientSocket.close()
                 Thread.currentThread().join()
             }
         }
@@ -74,21 +75,25 @@ class MllpClient(host: String?, port: Int, sslContext: SSLContext?, clientCert: 
 
     // A method to send data to the server and read the response asynchronously
     fun <TMessage : Message> send(message: TMessage): CompletableFuture<Hl7Message> {
-        // Create an output stream to write data to the server socket
-        val writer = clientSocket!!.getOutputStream().writer()
+        val writer = clientSocket.getOutputStream().writer()
         val terser = Terser(message)
         val msgControlId = terser.get("/.MSH-10-1")
         val future = CompletableFuture<Hl7Message>()
         awaitingResponse[msgControlId] = future
         val hl7 = parser.encode(message)
-        val msg = charArrayOf(Constants.startBlock, *hl7.toCharArray(), *Constants.endBlock)
+        val msg =
+            charArrayOf(Constants.startCharacter, *hl7.toCharArray(), Constants.firstEndChar, Constants.lastEndChar)
         writer.write(msg)
         writer.flush()
         return future
     }
 
+    /**
+     * Closes the client socket
+     *
+     * {@inheritDoc}
+     */
     override fun close() {
-        // Close the client socket
-        clientSocket!!.close()
+        clientSocket.close()
     }
 }
